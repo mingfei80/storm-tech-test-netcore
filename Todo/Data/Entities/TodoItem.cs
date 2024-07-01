@@ -8,6 +8,7 @@ namespace Todo.Data.Entities {
         public string ResponsiblePartyId { get; set; }
         public IdentityUser ResponsibleParty { get; set; }
         public bool IsDone { get; set; }
+        public int Rank { get; set; }
         public Importance Importance { get; set; }
 
         public int TodoListId { get; set; }
@@ -15,12 +16,13 @@ namespace Todo.Data.Entities {
 
         protected TodoItem() { }
 
-        public TodoItem(int todoListId, string responsiblePartyId, string title, Importance importance)
+        public TodoItem(int todoListId, string responsiblePartyId, string title, Importance importance, int rank)
         {
             TodoListId = todoListId;
             ResponsiblePartyId = responsiblePartyId;
             Title = title;
             Importance = importance;
+            Rank = rank;
         }
     }
 }

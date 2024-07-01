@@ -1,12 +1,17 @@
 ﻿@using Todo.Controllers
+@using Microsoft.AspNetCore.Identity
+@using Todo.Data
 @using Todo.Data.Entities
 @using Todo.Services
+@using Todo.Views.TodoItem
 @model Todo.Models.TodoLists.TodoListDetailViewmodel
 
 @{
     ViewData["Title"] = $"List: {Model.Title}";
+    string UserId = @User.Id();
 }
 
+@inject ApplicationDbContext dbContext
 <h2>@ViewData["Title"]</h2>
 
 <div class="col-md-6">
@@ -14,12 +19,68 @@
     <ul class="list-group">
 
         <li class="list-group-item">
-            <a asp-action="Create" asp-controller="TodoItem" asp-route-todoListId="@Model.TodoListId">
-                <strong>Add New Item</strong>
-            </a>
+            <form id="add-item-form">
+                <div class="form-group">
+                    <label for="title">Title</label>
+                    <input type="text" id="title" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label for="importance">Importance</label>
+                    @Html.DropDownList(
+                        "optImportance",
+                        new SelectList(
+                             SelectListConvenience.ImportanceSelectListIntItems.Select(x => new { Value = x.Value, Text = x.Text }),
+                        "Value",
+                        "Text"
+                        ),
+                        new { @class = "form-control" }
+                        )
+                </div>
+                <div class="form-group">
+                    <label for="rank">Rank</label>
+                    <input type="number" id="rank" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label for="rank">ResponsibleParty</label>
+                    @Html.DropDownList(
+                        "optResponsibleParty", 
+                        new SelectList(
+                            dbContext.UserSelectListItems().Select(x => new { Value = x.Value, Text = x.Text }),
+                            "Value",
+                            "Text"
+                        ),
+                        new { @class = "form-control" }
+                    )
+                </div>
+                <input type="hidden" id="todoListId" value="@Model.TodoListId" />
+                <button type="submit" class="btn btn-primary">Add New Item</button>
+            </form>
         </li>
 
-        @foreach (var item in Model.Items)
+        <li class="list-group-item">
+            <div class="row">
+
+                <div class="col-md-4">
+                    <input type="checkbox" id="toggleDoneItems" />
+                    <label for="toggleDoneItems">Hide Done Items</label>
+
+                </div>
+
+                <div class="col-md-8 text-right">
+                    Sort by 
+                    <a style="display:@(Model.CurrentSort == "Importance" ? "visible" : "none");" asp-action="Detail" asp-route-todoListId="@Model.TodoListId" asp-route-sortOrder="Rank">Rank</a>
+                    <span style="display:@(Model.CurrentSort != "Importance" ? "visible" : "none");">@Model.CurrentSort</span>
+                    &nbsp;|&nbsp;
+                    <a style="display:@(Model.CurrentSort == "Rank" ? "visible" : "none");" asp-action="Detail" asp-route-todoListId="@Model.TodoListId" asp-route-sortOrder="Importance">Importance</a>
+                    <span style="display:@(Model.CurrentSort != "Rank" ? "visible" : "none");">@Model.CurrentSort</span>
+                </div>
+            </div>
+        </li>
+
+        @{
+            var ModelItem = Model.CurrentSort == "Rank" ? Model.Items.OrderBy(c => c.Rank) : Model.Items.OrderBy(c => c.Importance);
+        }
+        @foreach (var item in ModelItem)
         {
             string contextualClass;
             switch (item.Importance)
@@ -35,35 +96,103 @@
                     break;
             }
 
-            <li class="list-group-item @contextualClass">
+            <li class="list-group-item @contextualClass @(item.IsDone ? "done-item" : "")">
                 
                 <div class="row">
 
-                <div class="col-md-8">
-                    <a asp-action="Edit" asp-controller="TodoItem" asp-route-todoItemId="@item.TodoItemId">
+                    <div class="col-md-4">
+                        <a asp-action="Edit" asp-controller="TodoItem" asp-route-todoItemId="@item.TodoItemId">
 
-                        @if (item.IsDone)
-                        {
-                            <s>@item.Title</s>
-                        }
-                        else
-                        {
-                            <text>@item.Title</text>
-                        }
-                    </a>
-                </div>
+                            @if (item.IsDone)
+                            {
+                                <s>@item.Title</s>
+                            }
+                            else
+                            {
+                                <text>@item.Title</text>
+                            }
+                        </a>
+                    </div>
 
-                <div class="col-md-4 text-right">
-                    <small>
-                        @item.ResponsibleParty.UserName
 
-                        <img src="https://www.gravatar.com/avatar/@Gravatar.GetHash(item.ResponsibleParty.Email)?s=30"/>
+                    <div class="col-md-1 text-right">
+                        <small>
+                            @item.Rank
+                        </small>
+                    </div>
 
-                    </small>
-                </div>
+                    <div class="col-md-2 text-right">
+                        <small>
+                            @item.Importance
+                        </small>
+                    </div>
+
+                    <div class="col-md-5 text-right">
+                        <small>
+                            @item.ResponsibleParty.GravatarName
+                            <img src="https://www.gravatar.com/avatar/@Gravatar.GetHash(item.ResponsibleParty.Email)?s=30"/>
+                        </small>
+                    </div>
                 </div>
 
             </li>
         }
     </ul>
 </div>
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const toggleCheckbox = document.getElementById('toggleDoneItems');
+        toggleCheckbox.addEventListener('change', function () {
+            const doneItems = document.querySelectorAll('.done-item');
+            doneItems.forEach(item => {
+                if (toggleCheckbox.checked) {
+                    item.style.display = 'none';
+                } else {
+                    item.style.display = '';
+                }
+            });
+        });
+
+        const form = document.getElementById('add-item-form');
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const title = document.getElementById('title').value;
+            const importance = document.getElementById("optImportance").value;
+            const responsibleParty = document.getElementById("optResponsibleParty").value;
+            const rank = document.getElementById('rank').value;
+            const todoListId = document.getElementById('todoListId').value;
+
+            const response = await fetch('/api/TodoItemApi', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: 
+                `{
+                    "todoListId": ` + todoListId + `,
+                    "title": "` + title + `",
+                    "responsiblePartyId": "` + responsibleParty + `",
+                    "importance": ` + importance + `,
+                    "rank": ` + rank + `
+                 }`
+            });
+            if (response.ok) {
+                location.reload(true);
+            } else {
+                alert('Error adding item');
+            }
+        });
+
+        // Ensure initial state is respected on page load
+        const doneItems = document.querySelectorAll('.done-item');
+        doneItems.forEach(item => {
+            if (toggleCheckbox.checked) {
+                item.style.display = 'none';
+            } else {
+                item.style.display = '';
+            }
+        });
+    });
+</script>

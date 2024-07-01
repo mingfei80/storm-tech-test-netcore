@@ -38,6 +38,13 @@
                 <span asp-validation-for="Importance" class="text-danger"></span>
             </div>
 
+
+            <div class="form-group">
+                <label asp-for="Rank" class="control-label"></label>
+                <input asp-for="Rank" class="form-control" />
+                <span asp-validation-for="Rank" class="text-danger"></span>
+            </div>
+
             <div class="form-group">
                 <label asp-for="ResponsiblePartyId"></label>
                 @Html.DropDownListFor(

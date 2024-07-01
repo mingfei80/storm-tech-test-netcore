@@ -1,8 +1,8 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading;
+using System.Threading.Tasks;
 using Todo.Data;
 using Todo.Data.Entities;
 using Todo.EntityModelMappers.TodoLists;
@@ -31,10 +31,22 @@ namespace Todo.Controllers
             return View(viewmodel);
         }
 
-        public IActionResult Detail(int todoListId)
+        public async Task<IActionResult> Detail(int todoListId, string sortOrder = "Importance")
         {
             var todoList = dbContext.SingleTodoList(todoListId);
+
             var viewmodel = TodoListDetailViewmodelFactory.Create(todoList);
+
+            viewmodel.CurrentSort = sortOrder;
+
+            foreach (var item in viewmodel.Items)
+            {
+                var gravatarName = await Gravatar.GetGravatarProfileNameAsync(item.ResponsibleParty.Email);
+
+                item.ResponsibleParty.GravatarName = ((gravatarName == null) || (gravatarName == item.ResponsibleParty.Email)) 
+                                                        ? item.ResponsibleParty.Email  : gravatarName;
+            }
+
             return View(viewmodel);
         }
 
